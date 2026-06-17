@@ -1,4 +1,4 @@
--- [[ Nego Hub - Oficial Mobile ]]
+-- [[ Nego Hub - Oficial Mobile Atualizado ]]
 
 if game.CoreGui:FindFirstChild("NegoHubUI") then
     game.CoreGui.NegoHubUI:Destroy()
@@ -31,7 +31,7 @@ local ButtonCorner = Instance.new("UICorner")
 ButtonCorner.CornerRadius = UDim.new(0, 10)
 ButtonCorner.Parent = MenuButton
 
--- 📱 PAINEL PRINCIPAL (Estilo da imagem_2)
+-- 📱 PAINEL PRINCIPAL
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
 MainFrame.Parent = NegoHubUI
@@ -41,7 +41,7 @@ MainFrame.BackgroundColor3 = Color3.fromRGB(12, 16, 22)
 MainFrame.Visible = true
 
 local UIStroke = Instance.new("UIStroke")
-UIStroke.Color = Color3.fromRGB(0, 255, 200) -- Borda Neon
+UIStroke.Color = Color3.fromRGB(0, 255, 200)
 UIStroke.Thickness = 2
 UIStroke.Parent = MainFrame
 
@@ -119,15 +119,16 @@ MenuButton.MouseButton1Click:Connect(function()
     MainFrame.Visible = not MainFrame.Visible
 end)
 
--- 🎯 SCRIPT DO CAMLOCK
+-- 🎯 SISTEMA PVP INTERNO (MIRA, SKILLS E AUTO V4)
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
 local RunService = game:GetService("RunService")
+local VirtualUser = game:GetService("VirtualUser")
 
 local function GetClosestPlayer()
     local ClosestTarget = nil
-    local MaxDistance = 500
+    local MaxDistance = 600
 
     for _, player in pairs(Players:GetPlayers()) do
         if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
@@ -146,11 +147,41 @@ local function GetClosestPlayer()
     return ClosestTarget
 end
 
-RunService.RenderStepped:Connect(function()
-    if getgenv().CamlockEnabled then
+-- Modifica o comportamento do Mouse/Toque para direcionar Skills
+local OldNamecall
+OldNamecall = hookmetamethod(game, "__namecall", function(Self, ...)
+    local Args = {...}
+    local Method = getnamecallmethod()
+    
+    if getgenv().AimbotSkills and (Method == "FindPartOnRayWithIgnoreList" or Method == "FindPartOnRay") then
         local Target = GetClosestPlayer()
         if Target then
-            Camera.CFrame = CFrame.new(Camera.CFrame.Position, Target.Position)
+            return Target, Target.Position, Vector3.new(0,1,0), Target.Material
+        end
+    end
+    return OldNamecall(Self, ...)
+end)
+
+RunService.RenderStepped:Connect(function()
+    local Target = GetClosestPlayer()
+    
+    -- 1. Camlock de CFrame
+    if getgenv().CamlockEnabled and Target then
+        Camera.CFrame = CFrame.new(Camera.CFrame.Position, Target.Position)
+    end
+    
+    -- 2. Direcionamento Forçado das Skills
+    if getgenv().AimbotSkills and Target then
+        pcall(function()
+            LocalPlayer:GetMouse().Hit = Target.CFrame
+        end)
+    end
+    
+    -- 3. Auto Raça V4
+    if getgenv().AutoV4 then
+        local Character = LocalPlayer.Character
+        if Character and Character:FindFirstChild("AwakeningBar") and Character.AwakeningBar.Value >= 100 then
+            VirtualUser:TypeKey("t")
         end
     end
 end)
