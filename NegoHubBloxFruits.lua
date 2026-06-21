@@ -1,4 +1,4 @@
--- [[ Nego Hub - Oficial Mobile Clean + Night Vision ]]
+-- [[ Nego Hub - Oficial Mobile Clean + Night Vision Corrigido ]]
 
 if game.CoreGui:FindFirstChild("NegoHubUI") then
     game.CoreGui.NegoHubUI:Destroy()
@@ -12,18 +12,19 @@ NegoHubUI.ResetOnSpawn = false
 getgenv().CamlockEnabled = false
 getgenv().NightVisionEnabled = false
 
--- Salva as configurações de iluminação originais do jogo para poder restaurar depois
+-- Guarda os valores padrão ao iniciar
 local Lighting = game:GetService("Lighting")
 local OriginalBrightness = Lighting.Brightness
 local OriginalAmbient = Lighting.Ambient
 local OriginalOutdoorAmbient = Lighting.OutdoorAmbient
+local OriginalClockTime = Lighting.ClockTime
 
--- 📱 PAINEL PRINCIPAL (Tamanho reajustado para os 2 botões + radar)
+-- 📱 PAINEL PRINCIPAL
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
 MainFrame.Parent = NegoHubUI
 MainFrame.Position = UDim2.new(0.15, 0, 0.25, 0)
-MainFrame.Size = UDim2.new(0, 260, 0, 255) -- Ajustado para caber o novo botão
+MainFrame.Size = UDim2.new(0, 260, 0, 255)
 MainFrame.BackgroundColor3 = Color3.fromRGB(12, 16, 22)
 MainFrame.Visible = true
 
@@ -99,8 +100,6 @@ local function CriarBotao(Nome, Texto, CorTexto, Funcao)
 end
 
 -- 🛠️ CRIAÇÃO DOS COMANDOS
-
--- 1. Camlock
 CriarBotao("CamlockBtn", "CentuDox Camlock: OFF", Color3.fromRGB(0, 180, 255), function(self)
     getgenv().CamlockEnabled = not getgenv().CamlockEnabled
     if getgenv().CamlockEnabled then
@@ -112,7 +111,6 @@ CriarBotao("CamlockBtn", "CentuDox Camlock: OFF", Color3.fromRGB(0, 180, 255), f
     end
 end)
 
--- 2. Night Vision (NOVO)
 CriarBotao("NightVisionBtn", "Night Vision: OFF", Color3.fromRGB(0, 255, 100), function(self)
     getgenv().NightVisionEnabled = not getgenv().NightVisionEnabled
     if getgenv().NightVisionEnabled then
@@ -121,10 +119,15 @@ CriarBotao("NightVisionBtn", "Night Vision: OFF", Color3.fromRGB(0, 255, 100), f
     else
         self.Text = "Night Vision: OFF"
         self.BackgroundColor3 = Color3.fromRGB(20, 24, 30)
+        -- Restaura as opções originais do jogo ao desligar
+        Lighting.Brightness = OriginalBrightness
+        Lighting.Ambient = OriginalAmbient
+        Lighting.OutdoorAmbient = OriginalOutdoorAmbient
+        Lighting.ClockTime = OriginalClockTime
     end
 end)
 
--- 📊 MONITOR DE PROXIMIDADE (Radar de Distância)
+-- 📊 MONITOR DE PROXIMIDADE
 local RadarLabel = Instance.new("TextLabel")
 RadarLabel.Name = "RadarLabel"
 RadarLabel.Parent = MainFrame
@@ -170,10 +173,10 @@ local function GetClosestPlayer()
     return ClosestTarget, TargetName, RoundedDistance
 end
 
+-- LOOP CONTÍNUO (Força as propriedades todo frame se estiver ativo)
 RunService.RenderStepped:Connect(function()
     local Target, Name, Dist = GetClosestPlayer()
     
-    -- Atualiza o texto do indicador de proximidade
     if Target then
         RadarLabel.Text = "Perto: " .. Name .. " [" .. Dist .. "m]"
         RadarLabel.TextColor3 = Color3.fromRGB(0, 255, 200)
@@ -182,19 +185,15 @@ RunService.RenderStepped:Connect(function()
         RadarLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
     end
     
-    -- Camlock ativa
     if getgenv().CamlockEnabled and Target then
         Camera.CFrame = CFrame.new(Camera.CFrame.Position, Target.Position)
     end
     
-    -- Controle do Night Vision (Atualiza dinamicamente para evitar que o jogo resete a luz)
+    -- FORÇA A ILUMINAÇÃO MÁXIMA CONTINUAMENTE
     if getgenv().NightVisionEnabled then
-        Lighting.Brightness = 3
+        Lighting.Brightness = 4
+        Lighting.ClockTime = 14 -- Força a hora do jogo para meio-dia (Sol cheio)
         Lighting.Ambient = Color3.fromRGB(255, 255, 255)
         Lighting.OutdoorAmbient = Color3.fromRGB(255, 255, 255)
-    else
-        Lighting.Brightness = OriginalBrightness
-        Lighting.Ambient = OriginalAmbient
-        Lighting.OutdoorAmbient = OriginalOutdoorAmbient
     end
 end)
