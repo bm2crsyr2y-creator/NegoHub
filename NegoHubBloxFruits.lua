@@ -1,4 +1,4 @@
--- [[ Nego Hub - Oficial Mobile Atualizado ]]
+-- [[ Nego Hub - Oficial Mobile Final ]]
 
 if game.CoreGui:FindFirstChild("NegoHubUI") then
     game.CoreGui.NegoHubUI:Destroy()
@@ -10,7 +10,6 @@ NegoHubUI.Parent = game.CoreGui
 NegoHubUI.ResetOnSpawn = false
 
 getgenv().CamlockEnabled = false
-getgenv().AimbotSkills = false
 getgenv().AutoV4 = false
 
 -- 🟢 BOTÃO DE ABRIR/FECHAR
@@ -41,7 +40,7 @@ MainFrame.BackgroundColor3 = Color3.fromRGB(12, 16, 22)
 MainFrame.Visible = true
 
 local UIStroke = Instance.new("UIStroke")
-UIStroke.Color = Color3.fromRGB(0, 255, 200)
+UIStroke.Color = Color3.fromRGB(0, 255, 200) -- Borda Neon Ciano
 UIStroke.Thickness = 2
 UIStroke.Parent = MainFrame
 
@@ -59,7 +58,7 @@ local UIPadding = Instance.new("UIPadding")
 UIPadding.Parent = MainFrame
 UIPadding.PaddingTop = UDim.new(0, 15)
 
--- 🎨 CRIADOR DE BOTÕES EMPILHADOS
+-- 🎨 CRIADOR DE BOTÕES
 local function CriarBotao(Nome, Texto, CorTexto, Funcao)
     local Botao = Instance.new("TextButton")
     Botao.Name = Nome
@@ -93,17 +92,6 @@ CriarBotao("CamlockBtn", "CentuDox Camlock: OFF", Color3.fromRGB(0, 180, 255), f
     end
 end)
 
-CriarBotao("AimbotSkillsBtn", "Aimbot Skills: OFF", Color3.fromRGB(255, 50, 150), function(self)
-    getgenv().AimbotSkills = not getgenv().AimbotSkills
-    if getgenv().AimbotSkills then
-        self.Text = "Aimbot Skills: ON"
-        self.BackgroundColor3 = Color3.fromRGB(70, 30, 50)
-    else
-        self.Text = "Aimbot Skills: OFF"
-        self.BackgroundColor3 = Color3.fromRGB(20, 24, 30)
-    end
-end)
-
 CriarBotao("AutoV4Btn", "Auto V4: OFF", Color3.fromRGB(255, 200, 0), function(self)
     getgenv().AutoV4 = not getgenv().AutoV4
     if getgenv().AutoV4 then
@@ -115,11 +103,26 @@ CriarBotao("AutoV4Btn", "Auto V4: OFF", Color3.fromRGB(255, 200, 0), function(se
     end
 end)
 
+-- 📊 TEXTO DO MONITOR DE PROXIMIDADE (BÁSICO)
+local RadarLabel = Instance.new("TextLabel")
+RadarLabel.Name = "RadarLabel"
+RadarLabel.Parent = MainFrame
+RadarLabel.Size = UDim2.new(0, 230, 0, 45)
+RadarLabel.BackgroundColor3 = Color3.fromRGB(15, 18, 22)
+RadarLabel.Text = "Alvo: Nenhum"
+RadarLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+RadarLabel.Font = Enum.Font.SourceSansPro
+RadarLabel.TextSize = 16
+
+local RadarCorner = Instance.new("UICorner")
+RadarCorner.CornerRadius = UDim.new(0, 8)
+RadarCorner.Parent = RadarLabel
+
 MenuButton.MouseButton1Click:Connect(function()
     MainFrame.Visible = not MainFrame.Visible
 end)
 
--- 🎯 SISTEMA PVP INTERNO (MIRA, SKILLS E AUTO V4)
+-- 🎯 LOGICA DE DISTANCIA E SISTEMA
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
@@ -129,6 +132,8 @@ local VirtualUser = game:GetService("VirtualUser")
 local function GetClosestPlayer()
     local ClosestTarget = nil
     local MaxDistance = 600
+    local TargetName = "Nenhum"
+    local RoundedDistance = 0
 
     for _, player in pairs(Players:GetPlayers()) do
         if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
@@ -140,44 +145,33 @@ local function GetClosestPlayer()
                 if Distance < MaxDistance then
                     ClosestTarget = TargetPart
                     MaxDistance = Distance
+                    TargetName = player.DisplayName
+                    RoundedDistance = math.floor(Distance)
                 end
             end
         end
     end
-    return ClosestTarget
+    return ClosestTarget, TargetName, RoundedDistance
 end
 
--- Modifica o comportamento do Mouse/Toque para direcionar Skills
-local OldNamecall
-OldNamecall = hookmetamethod(game, "__namecall", function(Self, ...)
-    local Args = {...}
-    local Method = getnamecallmethod()
-    
-    if getgenv().AimbotSkills and (Method == "FindPartOnRayWithIgnoreList" or Method == "FindPartOnRay") then
-        local Target = GetClosestPlayer()
-        if Target then
-            return Target, Target.Position, Vector3.new(0,1,0), Target.Material
-        end
-    end
-    return OldNamecall(Self, ...)
-end)
-
 RunService.RenderStepped:Connect(function()
-    local Target = GetClosestPlayer()
+    local Target, Name, Dist = GetClosestPlayer()
     
-    -- 1. Camlock de CFrame
+    -- Atualiza o painel de texto básico
+    if Target then
+        RadarLabel.Text = "Perto: " .. Name .. " [" .. Dist .. "m]"
+        RadarLabel.TextColor3 = Color3.fromRGB(0, 255, 200)
+    else
+        RadarLabel.Text = "Alvo: Nenhum"
+        RadarLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
+    end
+    
+    -- Camlock de CFrame
     if getgenv().CamlockEnabled and Target then
         Camera.CFrame = CFrame.new(Camera.CFrame.Position, Target.Position)
     end
     
-    -- 2. Direcionamento Forçado das Skills
-    if getgenv().AimbotSkills and Target then
-        pcall(function()
-            LocalPlayer:GetMouse().Hit = Target.CFrame
-        end)
-    end
-    
-    -- 3. Auto Raça V4
+    -- Auto Raça V4
     if getgenv().AutoV4 then
         local Character = LocalPlayer.Character
         if Character and Character:FindFirstChild("AwakeningBar") and Character.AwakeningBar.Value >= 100 then
